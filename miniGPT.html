@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fantasy Name Generator: The Forge</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0908;
+      --card-bg: rgba(28, 25, 23, 0.95);
+      --gold: #d4af37;
+      --chaos-red: #ad4200;
+      --gold-glow: rgba(212, 175, 55, 0.4);
+      --border: rgba(212, 175, 55, 0.2);
+      --text-main: #eae0d5;
+      --text-dim: #a9927d;
+    }
+
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      font-family: 'Quicksand', sans-serif;
+      background: var(--bg-deep);
+      background-image: 
+        radial-gradient(circle at 50% -20%, #432818 0%, transparent 50%),
+        url("https://www.transparenttextures.com/patterns/dark-matter.png");
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+    }
+
+    /* --- Loading Screen --- */
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-deep);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      transition: opacity 1s ease, visibility 1s;
+      padding: 2rem;
+    }
+
+    .ritual-box { width: 100%; max-width: 400px; text-align: center; }
+    .ritual-title { font-family: 'Cinzel', serif; color: var(--gold); font-size: 1.5rem; margin-bottom: 2rem; letter-spacing: 4px; text-shadow: 0 0 20px var(--gold-glow); }
+    .magic-bar-container { height: 4px; width: 100%; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+    #magic-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #8b7324, #d4af37, #f9e29b); box-shadow: 0 0 15px var(--gold); transition: width 0.3s ease; }
+    .ritual-status { margin-top: 1rem; font-family: 'Cinzel', serif; font-size: 0.7rem; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; }
+
+    /* --- Main Interface --- */
+    #main-forge {
+      width: 100%;
+      max-width: 1100px;
+      padding: 2rem 1rem;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 1s ease;
+      visibility: hidden;
+    }
+
+    #main-forge.visible { opacity: 1; transform: translateY(0); visibility: visible; }
+
+    @media (min-width: 1024px) { #main-forge { grid-template-columns: 320px 1fr; padding: 4rem 2rem; } }
+
+    header { grid-column: 1 / -1; text-align: center; margin-bottom: 1rem; }
+    h1 { font-family: 'Cinzel', serif; color: var(--gold); margin: 0; letter-spacing: 2px; }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+
+    .section-label { font-family: 'Cinzel', serif; font-size: 0.8rem; color: var(--gold); margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    .input-grid { display: flex; flex-direction: column; gap: 1.5rem; margin-bottom: 1.5rem; }
+    .input-box { display: flex; flex-direction: column; gap: 0.7rem; }
+    label { font-size: 0.8rem; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+    
+    input[type="text"], input[type="number"] {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.8rem;
+      color: white;
+      font-size: 1rem;
+      width: 100%;
+      outline: none;
+    }
+
+    /* --- ENHANCED DUAL-COLOR SLIDER --- */
+    .slider-container { position: relative; width: 100%; padding: 10px 0; cursor: pointer; }
+    
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+      cursor: pointer;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Track logic */
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: linear-gradient(to right, var(--gold) 0%, var(--gold) 30%, var(--chaos-red) 70%, var(--chaos-red) 100%);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      height: 22px;
+      width: 22px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+      -webkit-appearance: none;
+      margin-top: -9px;
+      box-shadow: 0 0 15px rgba(255,255,255,0.5);
+      border: 3px solid var(--bg-deep);
+      transition: transform 0.2s;
+    }
+
+    input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.2); }
+
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.65rem;
+      font-family: 'Cinzel', serif;
+      margin-top: 5px;
+      letter-spacing: 1px;
+    }
+    
+    #label-order { color: var(--gold); transition: 0.3s; }
+    #label-chaos { color: #ad4200; transition: 0.3s; opacity: 0.6; }
+
+    .btn {
+      width: 100%;
+      padding: 1.1rem;
+      border-radius: 8px;
+      border: 1px solid var(--gold);
+      background: transparent;
+      color: var(--gold);
+      font-family: 'Cinzel', serif;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .btn:hover { background: var(--gold); color: black; box-shadow: 0 0 20px var(--gold-glow); }
+
+    .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.2rem; }
+    .name-tile {
+      background: rgba(212, 175, 55, 0.04);
+      border: 1px solid rgba(212, 175, 55, 0.15);
+      border-radius: 10px;
+      padding: 2rem 1rem;
+      text-align: center;
+      transition: 0.3s ease;
+    }
+    .name-tile:hover { border-color: var(--gold); transform: translateY(-4px); background: rgba(212, 175, 55, 0.08); }
+    .name-val { font-family: 'Cinzel', serif; font-size: 1.5rem; color: var(--gold); text-transform: capitalize; }
+    .name-sub { font-size: 0.6rem; color: var(--text-dim); letter-spacing: 2px; margin-top: 0.5rem; }
+
+    .hidden { opacity: 0 !important; visibility: hidden !important; pointer-events: none; }
+  </style>
+</head>
+<body>
+
+  <div id="loading-screen">
+    <div class="ritual-box">
+      <div class="ritual-title">Ritual of Awakening</div>
+      <div class="magic-bar-container">
+        <div id="magic-fill"></div>
+      </div>
+      <div id="status-text" class="ritual-status">Consulting Ancient Scrolls...</div>
+    </div>
+  </div>
+
+  <div id="main-forge">
+    <header>
+      <h1>The Name Forge</h1>
+    </header>
+
+    <aside class="card">
+      <div class="section-label">Incantation Specs</div>
+      <div class="input-grid">
+        <div class="input-box">
+          <label>Quantity</label>
+          <input id="samples" type="number" value="12" min="1">
+        </div>
+
+        <div class="input-box">
+          <label>Forge Resonance</label>
+          <div class="slider-container" id="slider-wrap">
+            <input id="temp" type="range" min="0.1" max="1.5" step="0.01" value="0.7">
+            <div class="slider-labels">
+              <span id="label-order">Pure Order</span>
+              <span id="label-chaos">Abyssal Chaos</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="input-box">
+          <label>Starting Runes</label>
+          <input id="prefix" type="text" placeholder="e.g. Val">
+        </div>
+      </div>
+      <button id="inferBtn" class="btn">Conjure Names</button>
+    </aside>
+
+    <main class="card">
+      <div class="section-label">Discovered Identities</div>
+      <div id="results" class="results-grid">
+         <div class="name-tile" style="grid-column: 1/-1; border-style: dashed; opacity: 0.4;">
+            <div class="name-val">Forge is Ready</div>
+            <div class="name-sub">Adjust the resonance and conjure</div>
+         </div>
+      </div>
+    </main>
+  </div>
+
+<script>
+/* -----------------------------   
+   ENGINE LOGIC (Simplified for brevity but powerful)
+   ------------------------------ */
+function mulberry32(a) { return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; } }
+function gaussian(rand) { let u=0,v=0; while(u===0) u = rand(); while(v===0) v = rand(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+class Value {
+  constructor(data, children=[], localGrads=[]) { this.data = data; this.grad = 0; this._children = children; this._local_grads = localGrads; }
+  add(other) { if (!(other instanceof Value)) other = new Value(other); return new Value(this.data + other.data, [this, other], [1,1]); }
+  mul(other) { if (!(other instanceof Value)) other = new Value(other); return new Value(this.data * other.data, [this, other], [other.data, this.data]); }
+  pow(exp) { return new Value(Math.pow(this.data, exp), [this], [exp * Math.pow(this.data, exp-1)]); }
+  log() { return new Value(Math.log(this.data), [this], [1/this.data]); }
+  exp() { return new Value(Math.exp(this.data), [this], [Math.exp(this.data)]); }
+  relu() { return new Value(Math.max(0, this.data), [this], [this.data > 0 ? 1 : 0]); }
+  neg() { return this.mul(-1); }
+  sub(other) { if (!(other instanceof Value)) other = new Value(other); return this.add(other.neg()); }
+  div(other) { if (!(other instanceof Value)) other = new Value(other); return this.mul(other.pow(-1)); }
+  backward() {
+    const topo = []; const visited = new Set();
+    const build = (v) => { if (!visited.has(v)) { visited.add(v); for (const c of v._children) build(c); topo.push(v); } };
+    build(this); this.grad = 1;
+    for (let i = topo.length - 1; i >= 0; --i) {
+      const v = topo[i];
+      for (let j = 0; j < v._children.length; ++j) {
+        const child = v._children[j], local = v._local_grads[j];
+        child.grad += local * v.grad;
+      }
+    }
+  }
+}
+function linear(x, w) { return w.map(row => { let s = null; for (let i = 0; i < row.length; ++i) { const term = row[i].mul(x[i]); s = s ? s.add(term) : term; } return s; }); }
+function softmax(logits) { const maxv = Math.max(...logits.map(l => l.data)); const exps = logits.map(l => l.sub(maxv).exp()); let total = null; for (const e of exps) total = total ? total.add(e) : e; return exps.map(e => e.div(total)); }
+function rmsnorm(x) { let ms = null; for (const xi of x) { const t = xi.mul(xi); ms = ms ? ms.add(t) : t; } const n = x.length; ms = ms.div(n); const scale = ms.add(1e-5).pow(-0.5); return x.map(xi => xi.mul(scale)); }
+function makeMatrix(nout, nin, rand, std=0.08, gauss=null) { const m = []; for (let i=0; i<nout; i++) { const row=[]; for (let j=0; j<nin; j++) row.push(new Value(gauss ? gauss()*std : (rand()*2-1)*std)); m.push(row); } return m; }
+
+class Engine {
+  constructor(docs) {
+    this.rand = mulberry32(42); this.gauss = () => gaussian(this.rand);
+    this.docs = docs; this.uchars = Array.from(new Set(docs.join('').split(''))).sort();
+    this.BOS = this.uchars.length; this.vocab_size = this.uchars.length + 1;
+    this.state = {
+      'wte': makeMatrix(this.vocab_size, 16, this.rand, 0.08, this.gauss), 'wpe': makeMatrix(12, 16, this.rand, 0.08, this.gauss),
+      'lm_head': makeMatrix(this.vocab_size, 16, this.rand, 0.08, this.gauss),
+      'l0.q': makeMatrix(16, 16, this.rand, 0.08, this.gauss), 'l0.k': makeMatrix(16, 16, this.rand, 0.08, this.gauss),
+      'l0.v': makeMatrix(16, 16, this.rand, 0.08, this.gauss), 'l0.o': makeMatrix(16, 16, this.rand, 0.08, this.gauss),
+      'l0.f1': makeMatrix(32, 16, this.rand, 0.08, this.gauss), 'l0.f2': makeMatrix(16, 32, this.rand, 0.08, this.gauss)
+    };
+    this.params = []; for(let k in this.state) for(let r of this.state[k]) for(let p of r) this.params.push(p);
+    this.m = new Array(this.params.length).fill(0); this.v = new Array(this.params.length).fill(0);
+  }
+  gpt(tid, pid, ks, vs) {
+    let x = rmsnorm(this.state['wte'][tid].map((t,i) => t.add(this.state['wpe'][pid][i])));
+    let x_res = x;
+    const q = linear(x, this.state['l0.q']); ks[0].push(linear(x, this.state['l0.k'])); vs[0].push(linear(x, this.state['l0.v']));
+    const al = ks[0].map(ki => { let s = null; for(let j=0; j<16; j++) s = s ? s.add(q[j].mul(ki[j])) : q[j].mul(ki[j]); return s.div(4); });
+    const w = softmax(al); let ho = [];
+    for(let j=0; j<16; j++) { let s = null; for(let t=0; t<w.length; t++) s = s ? s.add(w[t].mul(vs[0][t][j])) : w[t].mul(vs[0][t][j]); ho.push(s); }
+    x = linear(ho, this.state['l0.o']).map((v,i) => v.add(x_res[i]));
+    let fr = x; x = linear(x, this.state['l0.f1']).map(v => v.relu());
+    x = linear(x, this.state['l0.f2']).map((v,i) => v.add(fr[i]));
+    return linear(rmsnorm(x), this.state['lm_head']);
+  }
+  async train(onStep) {
+    for (let s = 0; s < 500; s++) {
+      const doc = this.docs[Math.floor(this.rand() * this.docs.length)];
+      const tks = [this.BOS].concat(Array.from(doc).map(c => this.uchars.indexOf(c))).concat([this.BOS]);
+      const n = Math.min(11, tks.length - 1);
+      const ks=[[]], vs=[[]]; let loss = null;
+      for (let i = 0; i < n; i++) {
+        const logits = this.gpt(tks[i], i, ks, vs);
+        const l = softmax(logits)[tks[i+1]].log().neg();
+        loss = loss ? loss.add(l) : l;
+      }
+      loss.div(n).backward();
+      for (let i = 0; i < this.params.length; i++) {
+        const p = this.params[i]; this.m[i] = 0.9 * this.m[i] + 0.1 * p.grad; this.v[i] = 0.99 * this.v[i] + 0.01 * p.grad * p.grad;
+        p.data -= 0.01 * (this.m[i]/0.1) / (Math.sqrt(this.v[i]/0.01)+1e-8); p.grad = 0;
+      }
+      if (s % 20 === 0) { onStep(s+1); await new Promise(r => setTimeout(r, 0)); }
+    }
+  }
+  infer(qty, temp, prefix) {
+    const res = []; const preIds = Array.from(prefix).map(c => this.uchars.indexOf(c)).filter(i => i !== -1);
+    for (let s = 0; s < qty; s++) {
+      let tks = [this.BOS], name = [], ks=[[]], vs=[[]];
+      for (let i = 0; i < 12; i++) {
+        const logits = this.gpt(tks[tks.length-1], i, ks, vs);
+        const sc = logits.map(l => Math.exp(l.data / temp));
+        const sum = sc.reduce((a,b)=>a+b,0); const pr = sc.map(v => v/sum);
+        let next = this.BOS;
+        if (i < preIds.length) next = preIds[i];
+        else { let r = this.rand(); for(let j=0; j<pr.length; j++){ r -= pr[j]; if(r<=0){next=j; break;}}}
+        if (next === this.BOS && i >= preIds.length) break;
+        name.push(this.uchars[next]); tks.push(next);
+      }
+      res.push(name.join(''));
+    }
+    return res;
+  }
+}
+
+/* -----------------------------   
+   UI FLOW & INTERACTION
+   ------------------------------ */
+const loadScreen = document.getElementById('loading-screen');
+const mainForge = document.getElementById('main-forge');
+const fill = document.getElementById('magic-fill');
+const statusText = document.getElementById('status-text');
+const results = document.getElementById('results');
+const inferBtn = document.getElementById('inferBtn');
+const tempInput = document.getElementById('temp');
+const labelOrder = document.getElementById('label-order');
+const labelChaos = document.getElementById('label-chaos');
+
+let forge = null;
+
+// SLIDER CLICK-TO-JUMP & VISUALS
+tempInput.addEventListener('input', () => {
+  const val = tempInput.value;
+  const ratio = (val - 0.1) / 1.4;
+  labelOrder.style.opacity = 1 - ratio + 0.2;
+  labelChaos.style.opacity = ratio + 0.2;
+});
+
+// Click-to-Jump Logic
+document.getElementById('slider-wrap').addEventListener('mousedown', (e) => {
+  const rect = tempInput.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const pct = Math.max(0, Math.min(1, x / rect.width));
+  const newVal = 0.1 + (pct * 1.4);
+  tempInput.value = newVal;
+  tempInput.dispatchEvent(new Event('input'));
+});
+
+async function startRitual() {
+  try {
+    const r = await fetch('https://raw.githubusercontent.com/karpathy/makemore/988aa59/names.txt');
+    const txt = await r.text();
+    const names = txt.split('\n').filter(x => x.length > 2);
+    forge = new Engine(names);
+    
+    await forge.train((step) => {
+      const pct = (step / 500) * 100;
+      fill.style.width = pct + "%";
+      statusText.textContent = `Feeding the Fire... ${Math.round(pct)}%`;
+    });
+
+    statusText.textContent = "Flame Stabilized";
+    setTimeout(() => {
+      loadScreen.classList.add('hidden');
+      mainForge.classList.add('visible');
+    }, 800);
+
+  } catch (e) {
+    statusText.textContent = "The Fire Went Out.";
+  }
+}
+
+inferBtn.addEventListener('click', () => {
+  const qty = parseInt(document.getElementById('samples').value) || 12;
+  const resonance = parseFloat(tempInput.value);
+  const pre = document.getElementById('prefix').value;
+  
+  results.innerHTML = '';
+  const names = forge.infer(qty, resonance, pre);
+  
+  names.forEach(n => {
+    const div = document.createElement('div');
+    div.className = 'name-tile';
+    div.innerHTML = `<div class="name-val">${n}</div><div class="name-sub">Forged Spirit</div>`;
+    results.appendChild(div);
+  });
+});
+
+window.addEventListener('DOMContentLoaded', startRitual);
+</script>
+</body>
+</html>
